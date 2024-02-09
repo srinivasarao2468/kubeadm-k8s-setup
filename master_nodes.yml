@@ -1,0 +1,19 @@
+- name: Initialize Kubernetes master on first master node
+  command: kubeadm init --control-plane-endpoint="<VIP>:6443" --upload-certs --apiserver-advertise-address=<FIRST_MASTER_IP> --pod-network-cidr=192.168.0.0/16
+  when: inventory_hostname == groups['masters'][0]
+
+- name: Join other master nodes to the cluster
+  command: "kubeadm join <VIP>:6443 --token <TOKEN> --discovery-token-ca-cert-hash <DISCOVERY_TOKEN>"
+  when: inventory_hostname != groups['masters'][0]
+
+# Copy kubeconfig for the user
+- name: Copy kubeconfig to user's home directory
+  become: true
+  copy:
+    src: /etc/kubernetes/admin.conf
+    dest: /home/{{ ansible_user }}/admin.conf
+    remote_src: yes
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: 0600
+  when: inventory_hostname == groups['masters'][0]
